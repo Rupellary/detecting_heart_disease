@@ -21,5 +21,5 @@ def string_to_Na(df, string):
     Outputs: df = updated data frame
     """
     for col in df.select_dtypes(exclude='number').columns:
-        df.loc[df[col]==string, df[col]]=None
+        df.loc[df[col]==string, col]=None
     return df
