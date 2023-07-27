@@ -3,6 +3,7 @@
 # Imports
 import pandas as pd
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, roc_auc_score, roc_curve, precision_recall_curve, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.model_selection import GridSearchCV
 import matplotlib.pyplot as plt
 
 def drop_data(df, col, value):
@@ -70,6 +71,21 @@ def get_safest_thresh(model, X_train, y_train):
     return safest_thesh
 
 
+def duplicate_model(pipe, model, scoring='recall'):
+    """
+    Description: Creates a new model with the same parameters that can be fit to new data without refitting the input model
+    Inputs: pipe = preprocessing pipeline
+            model = grid search model to be duplicated
+            scoring = scoring for grid search
+    Outputs: new_search = duplicate model
+    """
+    new_search = GridSearchCV(pipe,
+                              model.param_grid,
+                              scoring=scoring,
+                              cv=5)
+    return new_search
+
+
 def get_scores(model, X, y, thresh=0.5, format='df', name='Model Scores', safe=False, X_train=None, y_train=None):
     """
     Description: uses a model to predict ys from Xs and then scores those preductions and returns the scores
@@ -124,12 +140,13 @@ def score_models(models_dict, X, y, thresh = 0.5, safe=False, X_train=None, y_tr
         model_names = [name + ' (max recall)' for name in model_names]
     elif thresh != 0.5:
         model_names = [name + f' (with threshold of {thresh})' for name in model_names]
-    # initialize data frame with correct columns by just scoring first model
-    scores_df = get_scores(models_dict[models[0]], X, y, name=model_names[0], thresh=thresh, safe=safe, X_train=X_train, y_train=y_train)
-    # loop through remaining models, concatonating their scores with the results of the first
-    for i in range(1,len(models)):
+    # loop through models, adding the data frames of their scores to a list
+    scores_dfs = []
+    for i in range(0,len(models)):
         model_scores = get_scores(models_dict[models[i]], X, y, name=model_names[i], thresh=thresh, safe=safe, X_train=X_train, y_train=y_train)
-        scores_df = pd.concat([scores_df, model_scores])
+        scores_dfs.append(model_scores)
+    # concatonate score data frames and return composite
+    scores_df = pd.concat(scores_dfs)
     return scores_df
 
 def best_vs_safe(models_dict, X, y, X_train, y_train, thresh=0.5):
